@@ -122,6 +122,4 @@ Users can uncomment the code present in the file to get their desired output
 [stars-url]: https://github.com/moinkhanif/enumerables/stargazers
 [issues-shield]: https://img.shields.io/github/issues/moinkhanif/enumerables.svg?style=flat-square
 [issues-url]: https://github.com/moinkhanif/enumerables/issues
-×
-Drag and Drop
-The image will be downloaded
+
