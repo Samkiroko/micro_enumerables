@@ -43,23 +43,13 @@ module Enumerable
     true
   end
 
-  def my_any?(all_arg = nil)
-    arr = self
-    value = false
-    if block_given?
-      arr.my_each do |i|
-        value = true if yield i
-      end
-    elsif all_arg.nil?
-      arr.my_each { |i| value = true if i }
-    elsif all_arg.class == Class
-      arr.my_each { |i| value = true if i.class <= all_arg }
-    elsif all_arg.class == Regexp
-      arr.my_each { |i| value = true if i =~ all_arg }
-    else
-      arr.my_each { |i| value = true if i == all_arg && i.class <= all_arg.class }
+  def my_any?
+    result = false
+    my_each do |i|
+      result = true if yield i
+      break if result
     end
-    value
+    result
   end
 
   def my_none?(pattern = nil)
