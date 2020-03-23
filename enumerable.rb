@@ -1,160 +1,153 @@
+# rubocop:disable Style/CaseEquality, Style/For, Lint/RedundantCopDisableDirective, Lint/MissingCopEnableDirective, Metrics/ModuleLength, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+require_relative 'multiply_els.rb'
 module Enumerable
   def my_each
-    return enum_for(:my_each) unless block_given?
-
-    index = 0
-    while index < size
-      yield(self[index])
-      index += 1
+    arr = self
+    if block_given?
+      for i in arr do
+        yield i
+      end
+    else
+      arr.to_enum(:my_each)
     end
-    self
   end
 
-  def my_each_with_index(given_index = nil)
-    return enum_for(:my_each_with_index) unless block_given?
-
-    index = 0
-    index = given_index unless given_index.nil?
-    my_each do |x|
-      yield(x, index)
-      index += 1
+  def my_each_with_index
+    arr = self
+    if block_given?
+      j = 0
+      for i in arr do
+        yield i, j
+        j += 1
+      end
+    else
+      arr.to_enum(:my_each_with_index)
     end
-    self
   end
 
   def my_select
-    select_array = []
-    return enum_for(:my_select) unless block_given?
-
-    my_each { |x| select_array << x if yield x }
-    select_array
+    arr = self
+    if block_given?
+      new_arr = []
+      arr.my_each do |i|
+        new_arr.push(i) if yield i
+      end
+      new_arr
+    else
+      arr.to_enum(:my_select)
+    end
   end
 
-  def my_all?(pattern = nil)
+  def my_all?(all_arg = nil)
+    arr = self
+    value = true
+    if block_given?
+      arr.my_each do |i|
+        value = false unless yield i
+      end
+    elsif all_arg.nil?
+      arr.my_each { |i| value = false unless i }
+    elsif all_arg.class == Class
+      arr.my_each { |i| value = false unless i.class <= all_arg }
+    elsif all_arg.class == Regexp
+      arr.my_each { |i| value = false unless i =~ all_arg }
+    else
+      arr.my_each { |i| value = false unless i == all_arg && i.class <= all_arg.class }
+    end
+    value
+  end
+
+  def my_any?(pattern = nil)
     my_each do |x|
       if block_given?
-        return false unless yield x
+        return true if yield x
       elsif !pattern.nil?
-        return false if all_check(pattern, x) == false
-      else
-        return false unless x
+        return true if any_check(pattern, x)
+      elsif x
+        return true
       end
     end
-    true
+    false
+end
+
+  def my_none?(all_arg = nil)
+    arr = self
+    value = true
+    if block_given?
+      arr.my_each do |i|
+        value = false if yield i
+      end
+    elsif all_arg.nil?
+      arr.my_each { |i| value = false if i }
+    elsif all_arg.class == Class
+      arr.my_each { |i| value = false if i.class <= all_arg }
+    elsif all_arg.class == Regexp
+      arr.my_each { |i| value = false if i =~ all_arg }
+    else
+      arr.my_each { |i| value = false if i == all_arg && i.class <= all_arg.class }
+    end
+    value
   end
 
-  def my_any?
-    result = false
-    my_each do |i|
-      result = true if yield i
-      break if result
+  def my_count(num = nil)
+    arr = self
+    count = 0
+    block_count = proc { |i| count += 1 if yield i }
+    block_nil = proc { |j| count += 1 if j == num }
+    if block_given?
+      arr.my_each(&block_count)
+    else
+      arr.each(&block_nil) unless num.nil?
+      count = arr.length if num.nil?
+    end
+    count
+  end
+
+  def my_map
+    if block_given?
+      new_arr = []
+      arr = self
+      arr.my_each do |i|
+        new_arr.push(yield i)
+      end
+      new_arr
+    else
+      arr.to_enum
+    end
+  end
+
+  def my_inject(initial = nil, symbo = nil)
+    arr = self
+    if block_given? && symbo.nil?
+      result = initial
+      arr.my_each do |i|
+        result = if result.nil?
+                   i
+                 else
+                   yield(result, i)
+                 end
+      end
+    else
+      result = nil
+      if (initial.class != Symbol && symbo.nil?) && initial.class == Integer
+        warn "#{initial} is not a symbol nor a string"
+        abort
+      elsif initial.class == Symbol
+        if initial == :+
+          result = arr.my_inject { |sum, num| sum + num }
+        elsif initial == :*
+          result = arr.my_inject { |sum, num| sum * num }
+        elsif initial == :-
+          result = arr.my_inject { |sum, num| sum - num }
+        elsif initial == :/
+          result = arr.my_inject { |sum, num| sum / num }
+        end
+      elsif initial.class == Integer && symbo.class == Symbol
+        arr1 = arr.to_a
+        arr1.unshift(initial)
+        result = arr1.my_inject(symbo)
+      end
     end
     result
   end
-
-  def my_none?(pattern = nil)
-    my_each do |x|
-      if block_given?
-        return false if yield x
-      elsif !pattern.nil?
-        return false if none_check(pattern, x) == false
-      elsif x
-        return false
-      end
-    end
-    true
-  end
-
-  def my_count(items = nil)
-    repetitions = 0
-    my_each do |x|
-      if !items.nil?
-        repetitions += 1 if items == x
-      elsif block_given?
-        repetitions += 1 if yield x
-      else
-        repetitions += 1
-      end
-    end
-    repetitions
-  end
-
-  def my_map(proc = nil)
-    return enum_for(:my_map) unless block_given?
-
-    arr = []
-    each do |x|
-      arr << if block_given?
-               (yield x)
-             else
-               proc.call(x)
-             end
-    end
-    arr
-  end
-
-  def my_inject(accumulator = nil, value_given = nil)
-    return symbol_logic(value_given, accumulator) if accumulator.class == Integer && !value_given.nil?
-    return symbol_logic(accumulator, 0) if accumulator.class == Symbol
-
-    each do |x|
-      accumulator = if accumulator.class == Integer
-                      yield(accumulator, x)
-                    elsif accumulator.nil?
-                      x
-                    else
-                      yield(accumulator, x)
-                    end
-    end
-    accumulator
-  end
-end
-
-def symbol_logic(symbol, accumulator)
-  each do |x|
-    case symbol
-    when :+
-      accumulator += x
-    when :-
-      accumulator -= x
-    when :*
-      accumulator *= x
-    when :/
-      accumulator /= x
-    end
-  end
-  accumulator
-end
-
-def all_check(pattern, exponent)
-  if pattern.is_a? Regexp
-    return false if exponent !~ pattern
-  elsif pattern.is_a? Class
-    return false unless exponent.is_a? pattern
-  elsif exponent != pattern
-    return false
-  end
-  true
-end
-
-def any_check(pattern, exponent)
-  if pattern.is_a? Regexp
-    return false if pattern =~ exponent
-  elsif pattern.is_a? Class
-    return true if exponent.is_a? pattern
-  elsif exponent == pattern
-    return true
-  end
-  false
-end
-
-def none_check(pattern, exponent)
-  if pattern.is_a? Regexp
-    return false if pattern =~ exponent
-  elsif pattern.is_a? Class
-    return false if exponent.is_a? pattern
-  elsif exponent == pattern
-    return false
-  end
-  true
 end
