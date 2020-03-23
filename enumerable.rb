@@ -68,7 +68,7 @@ module Enumerable
       end
     end
     false
-end
+  end
 
   def my_none?(all_arg = nil)
     arr = self
