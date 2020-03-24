@@ -57,17 +57,23 @@ module Enumerable
     value
   end
 
-  def my_any?(pattern = nil)
-    my_each do |x|
-      if block_given?
-        return true if yield x
-      elsif !pattern.nil?
-        return true if any_check(pattern, x)
-      elsif x
-        return true
+  def my_any?(all_arg = nil)
+    arr = self
+    value = false
+    if block_given?
+      arr.my_each do |i|
+        value = true if yield i
       end
+    elsif all_arg.nil?
+      arr.my_each { |i| value = true if i }
+    elsif all_arg.class == Class
+      arr.my_each { |i| value = true if i.class <= all_arg }
+    elsif all_arg.class == Regexp
+      arr.my_each { |i| value = true if i =~ all_arg }
+    else
+      arr.my_each { |i| value = true if i == all_arg && i.class <= all_arg.class }
     end
-    false
+    value
   end
 
   def my_none?(all_arg = nil)
