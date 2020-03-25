@@ -109,17 +109,18 @@ module Enumerable
     count
   end
 
-  def my_map
-    if block_given?
-      new_arr = []
-      arr = self
-      arr.my_each do |i|
-        new_arr.push(yield i)
-      end
-      new_arr
-    else
-      arr.to_enum
+  def my_map(proc = nil)
+    return enum_for(:my_map) unless block_given?
+
+    arr = []
+    each do |x|
+      arr << if block_given?
+               (yield x)
+             else
+               proc.call(x)
+             end
     end
+    arr
   end
 
   def my_inject(initial = nil, symbo = nil)
